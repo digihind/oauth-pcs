@@ -2,19 +2,21 @@
 
 namespace App\Services\Auth;
 
+use App\Models\AuthorizationCode;
 use App\Models\Portal;
 use App\Models\User;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class SsoTokenService
 {
-    public function issueAuthorizationCode(User $user, Portal $portal, array $scopes, string $codeChallenge, string $codeChallengeMethod): array
+    public function issueAuthorizationCode(User $user, Portal $portal, array $scopes, string $codeChallenge, string $codeChallengeMethod): AuthorizationCode
     {
         $authorizationCode = Str::random(64);
 
-        return [
+        return AuthorizationCode::create([
             'code' => $authorizationCode,
             'expires_at' => now()->addMinutes(10),
             'payload' => [
@@ -24,7 +26,26 @@ class SsoTokenService
                 'code_challenge' => $codeChallenge,
                 'code_challenge_method' => $codeChallengeMethod,
             ],
-        ];
+        ]);
+    }
+
+    public function redeemAuthorizationCode(string $code, string $codeVerifier): array
+    {
+        $authorization = AuthorizationCode::query()->find($code);
+        if (! $authorization) {
+            throw new HttpException(400, 'Invalid authorization code');
+        }
+
+        if ($authorization->hasExpired()) {
+            $authorization->delete();
+            throw new HttpException(400, 'Authorization code expired');
+        }
+
+        $payload = $authorization->payload;
+
+        $authorization->delete();
+
+        return $this->exchangeCodeForTokens($payload, $codeVerifier);
     }
 
     public function exchangeCodeForTokens(array $authorizationPayload, string $codeVerifier): array
@@ -47,11 +68,16 @@ class SsoTokenService
         $challenge = $authorizationPayload['code_challenge'];
         $method = $authorizationPayload['code_challenge_method'];
 
-        if ($method === 'S256') {
-            $expected = rtrim(strtr(base64_encode(hash('sha256', $codeVerifier, true)), '+/', '-_'), '=');
-            abort_unless(hash_equals($expected, $challenge), 400, 'Invalid PKCE verifier');
-        } else {
-            abort_unless(hash_equals($codeVerifier, $challenge), 400, 'Invalid PKCE verifier');
+        $isValid = match ($method) {
+            'S256' => hash_equals(
+                rtrim(strtr(base64_encode(hash('sha256', $codeVerifier, true)), '+/', '-_'), '='),
+                $challenge
+            ),
+            default => hash_equals($codeVerifier, $challenge),
+        };
+
+        if (! $isValid) {
+            throw new HttpException(400, 'Invalid PKCE verifier');
         }
     }
 
