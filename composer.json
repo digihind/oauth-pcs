@@ -1,0 +1,19 @@
+{
+    "name": "company/oauth-provider",
+    "type": "project",
+    "require": {
+        "php": "^8.2",
+        "laravel/framework": "^10.0",
+        "laravel/sanctum": "^3.0",
+        "laravel/socialite": "^5.8",
+        "livewire/livewire": "^3.0",
+        "ext-json": "*",
+        "firebase/php-jwt": "^6.10",
+        "spomky-labs/otphp": "^11.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/"
+        }
+    }
+}
