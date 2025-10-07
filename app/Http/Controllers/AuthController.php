@@ -142,13 +142,11 @@ class AuthController extends Controller
             $codeChallengeMethod
         );
 
-        $request->session()->put('auth_code_'.$authorization['code'], $authorization);
-
         return redirect()->away(
             sprintf(
                 '%s?code=%s&state=%s',
                 $portal->callback_url,
-                $authorization['code'],
+                $authorization->code,
                 $request->input('state')
             )
         );

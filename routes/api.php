@@ -15,8 +15,10 @@ Route::post('/oauth/token', function (Request $request, SsoTokenService $tokenSe
         'code_verifier' => ['required', 'string'],
     ]);
 
-    $authorization = session()->pull('auth_code_'.$request->input('code'));
-    abort_unless($authorization, 400, 'Invalid authorization code');
-
-    return response()->json($tokenService->exchangeCodeForTokens($authorization['payload'], $request->input('code_verifier')));
+    return response()->json(
+        $tokenService->redeemAuthorizationCode(
+            $request->input('code'),
+            $request->input('code_verifier')
+        )
+    );
 });

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use DateTimeInterface;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -88,5 +89,10 @@ class User extends Authenticatable implements MustVerifyEmail
     public function scopeWithPortalAccess($query, Portal $portal)
     {
         return $query->whereHas('portals', fn ($q) => $q->where('portals.id', $portal->id));
+    }
+
+    public function createToken(string $name, array $abilities = ['*'], ?DateTimeInterface $expiresAt = null)
+    {
+        return parent::createToken($name, $abilities, $expiresAt);
     }
 }
